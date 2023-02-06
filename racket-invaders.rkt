@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-beginner-abbr-reader.ss" "lang")((modname space-invaders-starter) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+#reader(lib "htdp-beginner-abbr-reader.ss" "lang")((modname racket-invaders) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
 (require 2htdp/universe)
 (require 2htdp/image)
 
@@ -107,3 +107,44 @@
 (define G2 (make-game (list I1) (list M1) T1))
 (define G3 (make-game (list I1 I2) (list M1 M2) T1))
 
+;; =================
+;; Functions:
+
+;; Game -> Game
+;; start the world with (main G0)
+;; 
+(define (main game)
+  (big-bang game                        ; Game
+    (on-tick   update-game)             ; Game -> Game
+    (to-draw   render-game)             ; Game -> Image
+    (stop-when invader-reached-bottom?) ; Game -> Boolean
+    (on-key    handle-key)))           ; Game KeyEvent -> Game
+
+;; Game -> Game
+;; Move the tank and all missiles and invaders, randomly create a new invader, and deleting invaders hit by missiles
+;; !!!
+
+(define (update-game game) game) ;stub
+
+;; Game -> Image
+;; Draw the tank and all missiles and invaders
+;; !!!
+
+(define (render-game game) BACKGROUND) ;stub
+
+;; Game -> Boolean
+;; produce true if one of the invaders hits the bottom
+;; !!!
+
+(define (invader-reached-bottom? game) false) ;stub
+
+;; Game Key-Event -> Game
+;; change direction of tank if arrow is pressed and create new missile 
+;; !!!
+
+(define (handle-key game ke) game) ;stub
+#;
+(define (handle-key ws ke)
+  (cond [(key=? ke " ") (... ws)]
+        [else 
+         (... ws)]))
