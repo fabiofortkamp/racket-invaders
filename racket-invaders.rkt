@@ -122,7 +122,10 @@
 
 ;; Game -> Game
 ;; Move the tank and all missiles and invaders, randomly create a new invader, and deleting invaders hit by missiles
-;; !!!
+(check-expect (update-game
+               (make-game empty empty (make-tank (/ WIDTH 2) 1))) ;only the tank in the center, going right
+               (make-game empty empty (make-tank (+ (/ WIDTH 2) TANK-SPEED) 1)))
+
 
 (define (update-game game) game) ;stub
 
