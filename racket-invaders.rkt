@@ -36,9 +36,12 @@
                      (rectangle 20 10 "solid" "black"))))   ;main body
 
 (define TANK-HEIGHT/2 (/ (image-height TANK) 2))
+(define INVADER-HEIGHT/2 (/ (image-height INVADER) 2))
+(define TANK-WIDTH/2 (/ (image-width TANK) 2))
+(define INVADER-WIDTH/2 (/ (image-width INVADER) 2))
 
 (define MISSILE (ellipse 5 15 "solid" "red"))
-
+(define MISSILE-HEIGHT/2 (/ (image-height MISSILE) 2))
 
 
 ;; Data Definitions:
@@ -92,9 +95,9 @@
 ;; Missile is (make-missile Number Number)
 ;; interp. the missile's location is x y in screen coordinates
 
-(define M1 (make-missile 150 300))                       ;not hit U1
-(define M2 (make-missile (invader-x I1) (+ (invader-y I1) 10)))  ;exactly hit U1
-(define M3 (make-missile (invader-x I1) (+ (invader-y I1)  5)))  ;> hit U1
+(define M1 (make-missile 150 300))                               ;not hit I1
+(define M2 (make-missile (invader-x I1) (+ (invader-y I1) 10)))  ;exactly hit I1
+(define M3 (make-missile (invader-x I1) (+ (invader-y I1)  5)))  ;> hit I1
 
 #;
 (define (fn-for-missile m)
@@ -124,10 +127,181 @@
 ;; Move the tank and all missiles and invaders, randomly create a new invader, and deleting invaders hit by missiles
 (check-expect (update-game
                (make-game empty empty (make-tank (/ WIDTH 2) 1))) ;only the tank in the center, going right
-               (make-game empty empty (make-tank (+ (/ WIDTH 2) TANK-SPEED) 1)))
+              (make-game (update-invaders (make-game empty empty (make-tank (/ WIDTH 2) 1)))
+                         empty
+                         (update-tank (make-tank (/ WIDTH 2) 1)))) 
+(check-expect (update-game
+               (make-game (cons
+                           (make-invader 50 60 INVADER-X-SPEED)
+                           (cons (make-invader 100 200 (- INVADER-X-SPEED)) empty))
+                          empty
+                          (make-tank 100 (- 1))) ; tank going left, no missiles, two invaders in opposite directions
+               ) 
+              (make-game
+               (update-invaders
+                (make-game (cons
+                            (make-invader 50 60 INVADER-X-SPEED)
+                            (cons (make-invader 100 200 (- INVADER-X-SPEED)) empty))
+                           empty
+                           (make-tank 100 (- 1))))
+               empty
+               (update-tank  (make-tank 100 (- 1)))))
+(check-expect (update-game
+               (make-game (cons
+                           (make-invader 50 60 INVADER-X-SPEED) empty)
+                          (cons (make-missile 30 50) empty)
+                          (make-tank 100 (- 1))) ; one missile
+               ) 
+              (make-game
+               (update-invaders
+                (make-game (cons
+                            (make-invader 50 60 INVADER-X-SPEED) empty)
+                           (cons (make-missile 30 50) empty)
+                           (make-tank 100 (- 1))))
+               (update-missiles   (make-game (cons
+                                              (make-invader 50 60 INVADER-X-SPEED) empty)
+                                             (cons (make-missile 30 50) empty)
+                                             (make-tank 100 (- 1))))
+               (update-tank  (make-tank 100 (- 1)))))                
+
 
 
 (define (update-game game) game) ;stub
+
+;; Game -> listof Invaders
+;; update the invaders by:
+;;  - removing invaders hit by missiles
+;;  - moving invaders not hit by missiles
+;;  - generating new invaders at the same x-position as tank
+;; !!! the generation rate has to be updated
+
+(check-expect (update-invaders (make-game empty empty (make-tank (/ WIDTH 2) 1)))
+              (cons
+               (make-invader (/ WIDTH 2) (- INVADER-HEIGHT/2) INVADER-X-SPEED) empty)) ; no previous invader, just generate a new one
+(check-expect (update-invaders (make-game
+                                (cons
+                                 (make-invader (/ WIDTH 2) (+ INVADER-HEIGHT/2 0) INVADER-X-SPEED) empty)
+                                empty
+                                (make-tank (/ WIDTH 3) -1)))
+              (cons
+               (make-invader (/ WIDTH 3) (- INVADER-HEIGHT/2) INVADER-X-SPEED)
+               (cons (make-invader (+ (/ WIDTH 2) INVADER-X-SPEED)
+                                   (+ INVADER-HEIGHT/2 INVADER-Y-SPEED)
+                                   INVADER-X-SPEED) empty))) ;a new one was generated at a new location, the existing was moved
+(check-expect (update-invaders (make-game
+                                (cons
+                                 (make-invader (- WIDTH INVADER-X-SPEED) 100 INVADER-X-SPEED)
+                                 (cons (make-invader (+ (/ WIDTH 2) INVADER-X-SPEED)
+                                                     (+ INVADER-HEIGHT/2 INVADER-Y-SPEED)
+                                                     INVADER-X-SPEED) empty))
+                                (cons
+                                 (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10)) empty)
+                                (make-tank (/ WIDTH 4) -1)))
+              (cons
+               (make-invader (/ WIDTH 4) (- INVADER-HEIGHT/2) INVADER-X-SPEED)
+               (cons (make-invader (- WIDTH INVADER-X-SPEED)
+                                   (+ 100 INVADER-Y-SPEED)
+                                   (- INVADER-X-SPEED)) empty)))             
+
+(define (update-invaders game) empty) ;stub
+
+;; Tank -> Tank
+;; move (or bounce) the tank
+(check-expect (update-tank (make-tank (/ WIDTH 2) 1)) (make-tank (+ (/ WIDTH 2) TANK-SPEED) 1))
+(check-expect (update-tank (make-tank (/ WIDTH 2) -1)) (make-tank (- (/ WIDTH 2) TANK-SPEED) -1))
+(check-expect (update-tank (make-tank (- WIDTH TANK-WIDTH/2 TANK-SPEED) 1)) (make-tank (- WIDTH TANK-WIDTH/2) -1))
+(check-expect (update-tank (make-tank (+ TANK-WIDTH/2 TANK-SPEED) -1)) (make-tank TANK-WIDTH/2 1))
+
+(define (update-tank tank) tank) ;stub
+
+;; Game -> listof Missile
+;; move the missiles and remove the ones that hit
+(check-expect (update-missiles
+               (make-game
+                (cons
+                 (make-invader (- WIDTH INVADER-X-SPEED) 100 INVADER-X-SPEED)
+                 (cons (make-invader (+ (/ WIDTH 2) INVADER-X-SPEED)
+                                     (+ INVADER-HEIGHT/2 INVADER-Y-SPEED)
+                                     INVADER-X-SPEED) empty))
+                (cons
+                 (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10)) empty)
+                (make-tank (/ WIDTH 4) -1)))
+              empty) ; one missile hit, so no one left
+(check-expect (update-missiles
+               (make-game
+                (cons
+                 (make-invader (- WIDTH INVADER-X-SPEED) 100 INVADER-X-SPEED)
+                 (cons (make-invader (+ (/ WIDTH 2) INVADER-X-SPEED)
+                                     (+ INVADER-HEIGHT/2 INVADER-Y-SPEED)
+                                     INVADER-X-SPEED) empty))
+                (cons
+                 (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10))
+                 (cons (make-missile 10 10) empty))
+                (make-tank (/ WIDTH 4) -1)))
+              (cons (make-missile 10 (- 10 MISSILE-SPEED)) empty))
+
+; (define (update-missiles game) empty) ;stub
+
+(define (update-missiles game)
+  (retire-missiles (move-missiles (remove-missiles game))))
+
+;; Game -> listofMissiles
+;; remove missiles that hit invaders
+;; !!!
+(check-expect (remove-missiles                (make-game
+                                               (cons
+                                                (make-invader (- WIDTH INVADER-X-SPEED) 100 INVADER-X-SPEED)
+                                                (cons (make-invader (+ (/ WIDTH 2) INVADER-X-SPEED)
+                                                                    (+ INVADER-HEIGHT/2 INVADER-Y-SPEED)
+                                                                    INVADER-X-SPEED) empty))
+                                               (cons
+                                                (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10)) empty)
+                                               (make-tank (/ WIDTH 4) -1)))
+              empty) ;one missile hit, so no one left
+(check-expect (remove-missiles
+               (make-game
+                (cons
+                 (make-invader (- WIDTH INVADER-X-SPEED) 100 INVADER-X-SPEED)
+                 (cons (make-invader (+ (/ WIDTH 2) INVADER-X-SPEED)
+                                     (+ INVADER-HEIGHT/2 INVADER-Y-SPEED)
+                                     INVADER-X-SPEED) empty))
+                (cons
+                 (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10))
+                 (cons (make-missile 10 10) empty))
+                (make-tank (/ WIDTH 4) -1)))
+              (cons (make-missile 10 10) empty))
+
+
+; (define (remove-missiles game) empty) ;stub
+
+;; listof Missile -> listof Missile
+;; move missiles
+;; !!!
+(check-expect (move-missiles 
+               (cons
+                (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10)) empty)
+               )
+              (cons
+               (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (- (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10) INVADER-Y-SPEED)) empty))
+
+(define (move-missiles lom) empty) ;stub
+
+;; listofMissiles -> listofMissiles
+;; retire missiles that pass the top boundary
+;; !!!
+(check-expect (retire-missiles
+               (cons
+                (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10)) empty))
+               (cons
+                (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) (+  (+ INVADER-HEIGHT/2 INVADER-Y-SPEED) 10)) empty))
+
+(check-expect (retire-missiles
+               (cons
+                (make-missile (+ (/ WIDTH 2) INVADER-X-SPEED) MISSILE-HEIGHT/2) empty))
+ empty) 
+                                
+
+(define (retire-missiles game) empty) ;stub
 
 ;; Game -> Image
 ;; Draw the tank and all missiles and invaders
